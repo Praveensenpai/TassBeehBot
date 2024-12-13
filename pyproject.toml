@@ -1,0 +1,13 @@
+[project]
+name = "tassbeeh"
+version = "0.1.0"
+description = "TassBeehBot automates point claiming and task management on the TassBeeh App using data extracted from the web client."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fake-useragent>=2.0.3",
+    "loguru>=0.7.3",
+    "pydantic>=2.10.3",
+    "requests>=2.32.3",
+    "rich>=13.9.4",
+]
