@@ -2,7 +2,6 @@ import random
 import time
 import requests
 from typing import Optional
-
 from tass.coordinates import Coordinates
 from tass.endpoints import Endpoints
 from tass.headers import COMMON_HEADERS
@@ -161,6 +160,17 @@ class Tass:
 
         logger.success("Check-in completed successfully.")
 
+    def __get_ready_to_claim_key(self, data: PrayerDataModel) -> Optional[str]:
+        return next(
+        (
+            key
+            for key, status in data.prayerStatuses.items()
+            if status.status == "ready-to-claim"
+        ),
+        None,
+    )
+
+
     def refill_energy(self):
         prayer_data = self.get_prayer_data()
         if not prayer_data:
@@ -168,16 +178,21 @@ class Tass:
             return
 
         now = datetime.now(timezone.utc)
-        if now < prayer_data.nextPrayer:
-            logger.warning(
-                f"Cannot refill energy. Prayer not yet started: {prayer_data.nextPrayer}"
-            )
-            return
+
+        ready_to_claim_key = self.__get_ready_to_claim_key(prayer_data)
+
+        if not ready_to_claim_key:
+            if now < prayer_data.nextPrayer:
+                logger.warning(
+                    f"Cannot refill energy. Prayer not yet started: {prayer_data.nextPrayer}"
+                )
+                return
 
         headers = {
             **COMMON_HEADERS,
             "authorization": f"Bearer {self.auth_token}",
         }
+        logger.info(f"{ready_to_claim_key} is ready to claim. Refilling energy...")
         response = self.session.post(Endpoints.REFILL_ENERGY_URL, headers=headers)
 
         if response.status_code == 401:
