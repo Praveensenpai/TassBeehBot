@@ -97,8 +97,19 @@ class UserModel(BaseModel):
     achievementsCount: int = Field(..., description="Count of achievements unlocked")
     haqqAddress: Optional[str] = Field(None, description="Haqq address if available")
     energy: int = Field(..., description="Current energy level of the user")
-    energyBoosterFinishDate: Optional[str] = Field(
+    energyBoosterFinishDate: Optional[datetime] = Field(
         None, description="Finish date for energy booster"
+    )
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(**data)
+
+
+class AdBooster(BaseModel):
+    cooldownDate: datetime = Field(..., description="Date and time of the cooldown")
+    status: str = Field(
+        ..., description="Status of the ad booster (active or inactive)"
     )
 
     @classmethod

@@ -5,9 +5,16 @@ from typing import Optional
 from tass.coordinates import Coordinates
 from tass.endpoints import Endpoints
 from tass.headers import COMMON_HEADERS
-from tass.models import CheckInModel, PrayerDataModel, Quest, QuestData, UserModel
+from tass.models import (
+    AdBooster,
+    CheckInModel,
+    PrayerDataModel,
+    Quest,
+    QuestData,
+    UserModel,
+)
 from utils import logger
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 
 class Tass:
@@ -27,8 +34,7 @@ class Tass:
             logger.error("Error: Failed to retrieve Auth Token.")
             raise Exception("Could not retrieve Auth Token.")
 
-    def __generate_swipes(self, min_swipe: int, max_swipe: int) -> list:
-        swipes_count = random.randint(min_swipe, max_swipe)
+    def __generate_swipes(self, swipes_count: int) -> list:
         swipes = []
         for _ in range(swipes_count):
             co = Coordinates.new()
@@ -58,11 +64,11 @@ class Tass:
             return
         return token
 
-    def __refresh_auth_token(self):
+    def refresh_auth_token(self):
         self.auth_token = self.__get_auth_token(self.web_app_data)
 
-    def register_taps(self, min_swipe: int, max_swipe: int) -> bool:
-        swipes = self.__generate_swipes(min_swipe, max_swipe)
+    def register_taps(self, swipes_count: int) -> bool:
+        swipes = self.__generate_swipes(swipes_count)
         payload = {"swipes": swipes, "taps": len(swipes)}
         headers = {
             **COMMON_HEADERS,
@@ -73,7 +79,7 @@ class Tass:
         )
         if response.status_code == 401:
             logger.warning("Authorization token expired")
-            self.__refresh_auth_token()
+            self.refresh_auth_token()
             return False
         if response.status_code != 200:
             logger.error(
@@ -82,7 +88,7 @@ class Tass:
             logger.error(response.text)
             logger.error(response.status_code)
             return False
-        logger.success("Taps registered successfully.")
+        logger.success(f"Taps {swipes_count} registered successfully.")
         return True
 
     def get_profile_info(self) -> Optional[UserModel]:
@@ -93,7 +99,7 @@ class Tass:
         response = self.session.get(Endpoints.PROFILE_URL, headers=headers)
         if response.status_code == 401:
             logger.warning("Authorization token expired")
-            self.__refresh_auth_token()
+            self.refresh_auth_token()
             return
         return UserModel.from_dict(response.json())
 
@@ -121,7 +127,7 @@ class Tass:
         response = self.session.get(Endpoints.CHECK_IN_URL, headers=headers)
         if response.status_code == 401:
             logger.warning("Authorization token expired")
-            self.__refresh_auth_token()
+            self.refresh_auth_token()
             return
         return CheckInModel.from_dict(response.json())
 
@@ -148,7 +154,7 @@ class Tass:
 
         if response.status_code == 401:
             logger.warning("Authorization token expired")
-            self.__refresh_auth_token()
+            self.refresh_auth_token()
             return
 
         if response.status_code != 200:
@@ -162,14 +168,13 @@ class Tass:
 
     def __get_ready_to_claim_key(self, data: PrayerDataModel) -> Optional[str]:
         return next(
-        (
-            key
-            for key, status in data.prayerStatuses.items()
-            if status.status == "ready-to-claim"
-        ),
-        None,
-    )
-
+            (
+                key
+                for key, status in data.prayerStatuses.items()
+                if status.status == "ready-to-claim"
+            ),
+            None,
+        )
 
     def refill_energy(self):
         prayer_data = self.get_prayer_data()
@@ -197,7 +202,7 @@ class Tass:
 
         if response.status_code == 401:
             logger.warning("Authorization token expired")
-            self.__refresh_auth_token()
+            self.refresh_auth_token()
             return
 
         if response.status_code != 200:
@@ -218,7 +223,7 @@ class Tass:
 
         if response.status_code == 401:
             logger.warning("Authorization token expired")
-            self.__refresh_auth_token()
+            self.refresh_auth_token()
             return
 
         if response.status_code != 200:
@@ -231,7 +236,7 @@ class Tass:
         return PrayerDataModel.from_dict(response.json())
 
     def get_quests(self):
-        self.__refresh_auth_token()
+        self.refresh_auth_token()
         headers = {
             **COMMON_HEADERS,
             "authorization": f"Bearer {self.auth_token}",
@@ -240,7 +245,7 @@ class Tass:
 
         if response.status_code == 401:
             logger.warning("Authorization token expired")
-            self.__refresh_auth_token()
+            self.refresh_auth_token()
             return
 
         if response.status_code != 200:
@@ -281,7 +286,7 @@ class Tass:
 
         if response.status_code == 401:
             logger.warning("Authorization token expired")
-            self.__refresh_auth_token()
+            self.refresh_auth_token()
             return False
 
         if response.status_code == 404:
@@ -307,3 +312,36 @@ class Tass:
             if is_claimed:
                 logger.info("Wait a few seconds before claiming another quest.")
                 time.sleep(random.randint(1, 5))
+
+    def ad_booster(self, user: UserModel) -> Optional[AdBooster]:
+        if user.energyBoosterFinishDate is None:
+            logger.info("User does not have an energy booster.")
+            return
+        if user.energyBoosterFinishDate + timedelta(minutes=10) > datetime.now(
+            timezone.utc
+        ):
+            logger.info(
+                "Advertise has already received an advertisement in the last 10 minutes."
+            )
+            return
+
+        self.refresh_auth_token()
+        headers = {
+            **COMMON_HEADERS,
+            "authorization": f"Bearer {self.auth_token}",
+        }
+        response = self.session.post(Endpoints.AD_BOOSTER_URL, headers=headers)
+
+        if response.status_code == 401:
+            logger.warning("Authorization token expired")
+            self.refresh_auth_token()
+            return
+
+        if response.status_code != 200:
+            logger.error(
+                f"Error: Failed to advertise. Status Code: {response.status_code}"
+            )
+            logger.error(response.text)
+            return
+
+        return AdBooster.from_dict(response.json())

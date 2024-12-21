@@ -7,3 +7,4 @@ class Endpoints:
     PRAYER_STATUS_URL = "https://api.tassbeeh.com/api/v1/energy/prayer-status"
     QUESTS_URL = "https://api.tassbeeh.com/api/v1/quests/all"
     VERIFY_QUEST_URL = "https://api.tassbeeh.com/api/v1/quests/verify"
+    AD_BOOSTER_URL = "https://api.tassbeeh.com/api/v1/marketplace/ad-booster"
