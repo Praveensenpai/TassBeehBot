@@ -5,7 +5,7 @@ from datetime import datetime
 
 class CheckInModel(BaseModel):
     checkInsStreak: int = Field(..., description="Current streak of check-ins")
-    lastCheckInDate: datetime = Field(..., description="Date of the last check-in")
+    lastCheckInDate: Optional[datetime] = Field(None, description="Date of the last check-in")
     checkInExperience: int = Field(..., description="Experience earned from check-ins")
 
     @classmethod
@@ -84,7 +84,7 @@ class ReferralsModel(BaseModel):
 
 class TapsModel(BaseModel):
     firstLevel: int = Field(..., description="Taps at the first level")
-    secondLevel: int = Field(..., description="Taps at the second level")
+    secondLevel: Optional[int] = Field(None, description="Taps at the second level")
 
 
 class UserModel(BaseModel):

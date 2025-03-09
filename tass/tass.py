@@ -139,7 +139,11 @@ class Tass:
             return
 
         current_date = datetime.now(timezone.utc).date()
-        last_check_in_date = check_in_info.lastCheckInDate.date()
+
+        last_check_in_date = None
+        last_check_in_date = check_in_info.lastCheckInDate
+        if last_check_in_date:
+            last_check_in_date = last_check_in_date.date()
 
         if last_check_in_date == current_date:
             logger.warning("Already checked in today.")
